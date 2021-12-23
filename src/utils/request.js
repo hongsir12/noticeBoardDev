@@ -1,5 +1,5 @@
 import axios from 'axios'
-import  '../../static/config.js'
+import '../../static/config.js'
 import { deepClone } from '@/utils/deepClone'
 export function request(url, params, type) {
   // 请求超过30秒则判定为超时
@@ -32,12 +32,25 @@ export function request(url, params, type) {
         for (let k in config.data) {
           delete config.data[k]
         }
-        config.data.data = []
-        config.data.data.push(params)
+        let mutiParams = false
+        for (let key in params) {
+          if (key === 'data') {
+            // console.log(params[key])
+            mutiParams = true
+          }
+        }
+        // console.log(params);
+        if(!mutiParams) {
+          config.data.data = []
+          config.data.data.push(params)
+        }else{
+          config.data = params
+        }  
         config.data.msgid = 'string'
         config.data.session = 'string'
         config.data.source = 'string'
         config.data.timestamp = new Date().format('yyyy-MM-dd hh:mm:ss')
+        // console.log(config.data)
         return config
       },
       err => {

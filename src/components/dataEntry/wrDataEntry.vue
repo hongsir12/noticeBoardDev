@@ -23,12 +23,29 @@
           >添加人员</el-button
         >
         <el-button
-          type="primary"
+          type="danger"
           size="small"
           icon="el-icon-minus"
           @click="userDialog"
           >删除人员</el-button
         >
+        <el-button
+              type="warning"
+              size="small"
+              icon="el-icon-download"
+              @click="downloadExcel"
+            >
+              下载表格
+            </el-button>
+            <vue-xlsx-table @on-select-file="handleSelectedFile"
+              ><el-button
+                type="success"
+                size="small"
+                icon="el-icon-upload2"
+                title="导入表格"
+                >导入表格</el-button
+              ></vue-xlsx-table
+            >
       </el-button-group>
     </div>
     <div class="body">
@@ -191,14 +208,49 @@
         <el-button type="primary" @click="chooseOption">确 定</el-button>
       </span>
     </el-dialog>
+
+    <!-- 新增信息弹框 -->
+    <!-- <el-dialog title="设备故障信息" :visible.sync="dialogFormVisible">
+      <el-form :model="form" ref="form">
+        <el-form-item label="故障日期" :label-width="formLabelWidth">
+          <el-date-picker
+            v-model="form.date"
+            align="center"
+            type="date"
+            placeholder="选择日期"
+            :clearable="false"
+          >
+          </el-date-picker>
+        </el-form-item>
+        <el-form-item label="设备名称" :label-width="formLabelWidth">
+          <el-input v-model="form.device" autocomplete="off"></el-input>
+        </el-form-item>
+        <el-form-item label="故障类型" :label-width="formLabelWidth">
+          <el-select v-model="form.defaultType" placeholder="请选择故障类型">
+            <el-option
+              v-for="item in defaultType"
+              :key="item.value"
+              :label="item"
+              :value="item"
+            ></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item :label-width="formLabelWidth">
+          <el-button type="primary" @click="onSubmit">确认</el-button>
+          <el-button @click="closeDialog">取消</el-button>
+        </el-form-item>
+      </el-form>
+    </el-dialog> -->
   </div>
 </template>
 <script>
+import {json2Excel} from  '@/utils/json2Excel.js'
 export default {
   data() {
     return {
       allData: [],
       tableData: [], // 表格数据
+      excelData:[], //excel数据
       options: [], // 人员选择下拉框
       stationOptions: [], //岗位选择下拉框
       value: '',
@@ -369,10 +421,20 @@ export default {
       this.value = value
       this.getData(value)
     },
+    // 点击上传按钮获取excel表数据
+    handleSelectedFile(convertedData) {
+      this.excelData = convertedData.body
+      this.importExcel()
+    },
+    // 下载导出表格
+    async downloadExcel(){
+      console.log(this.tableData);
+      const header = ['date','workOrder','tasks','time[0]','time[1]','workHours']
+      
+    },
     // 获取表格数据
     async getData(name) {
       let data = []
-      console.log(this.currentWeek);
       try {
         let params = {
           report_type: '人员周报数据',
@@ -431,6 +493,7 @@ export default {
         },
       }
       let res = await this.$request('apiUpdate', params, 'post')
+      // console.log(res);
       row.iseditor = false
       //   this.getData(this.value)
       this.$message({
@@ -585,5 +648,10 @@ export default {
 /deep/ .el-cascader-node > .el-radio,
 .el-radio:last-child {
   margin-right: 30px;
+}
+/deep/ .xlsx-button {
+  border: 0px solid hsl(206, 100%, 56%);
+  padding: 0;
+  border-radius: 3px;
 }
 </style>

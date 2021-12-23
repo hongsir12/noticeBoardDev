@@ -42,6 +42,23 @@
             >
               新增
             </el-button>
+            <el-button
+              type="warning"
+              size="small"
+              icon="el-icon-download"
+              @click="downloadExcel"
+            >
+              下载表格
+            </el-button>
+            <vue-xlsx-table @on-select-file="handleSelectedFile"
+              ><el-button
+                type="success"
+                size="small"
+                icon="el-icon-upload2"
+                title="导入表格"
+                >导入表格</el-button
+              ></vue-xlsx-table
+            >
           </template>
           <template slot-scope="scope">
             <el-button
@@ -99,16 +116,18 @@
   </div>
 </template>
 <script>
+import {json2Excel} from  '@/utils/json2Excel.js'
 export default {
   data() {
     return {
       tableData: [],
+      excelData: [],
       form: {
         date: '',
         device: '',
         defaultType: '',
       },
-      defaultType: ['CPU', 'SAS盘', '主板', '软件', '电源'],
+      defaultType: ['CPU', 'SAS盘', '主板', '软件', '电源', '控制器', '其他'],
       dialogFormVisible: false, //弹框显示状态
       isEditor: false, //弹框是否为修改状态
       editID: null, //当前修改信息ID
@@ -138,7 +157,7 @@ export default {
         }
         let data = await this.$request('apiQuery', params, 'post')
         let tableData = []
-        if (data.code== 2000) {
+        if (data.code == 2000) {
           for (let rec of data.data.list) {
             let id = rec.report_id
             rec = JSON.parse(rec.report_data)
@@ -147,6 +166,7 @@ export default {
           }
         }
         this.tableData = tableData
+        // console.log(this.tableData);
       } catch (err) {
         console.log(err)
         this.$message({
@@ -244,6 +264,106 @@ export default {
           })
         })
     },
+    // 点击上传按钮获取excel表数据
+    handleSelectedFile(convertedData) {
+      this.excelData = convertedData.body
+      this.importExcel()
+    },
+    // 导入excel数据
+    async importExcel() {
+      // 获取excel数据
+      let data = this.excelData
+      if (data.length <= 0) {
+        this.$message({
+          message: '无新增数据',
+          type: 'warning',
+        })
+      } else {
+        data.forEach((item, index) => {
+          data[index] = {
+            date: item['故障日期'],
+            defaultType: item['故障类型'],
+            device: item['存储'],
+          }
+        })
+        this.insertData(data, '故障分布数据')
+      }
+    },
+    async insertData(xlsxData, report_type) {
+      try {
+        let queryParams = {
+          report_type: report_type,
+        }
+        let data = await this.$request('apiQuery', queryParams, 'post')
+        // console.log(data)
+        let tableData = [] //存放查询到的全部数据
+        if (data.code == 2000) {
+          for (let rec of data.data.list) {
+            let id = rec.report_id
+            rec = JSON.parse(rec.report_data)
+            rec.id = id
+            tableData.push(rec)
+          }
+          for (let xlsxRec of xlsxData) {
+            xlsxRec.date = this.$moment(xlsxRec.date).format('YYYY-MM-DD')
+          }
+          // 存放新增的数据
+          let newDataArr = xlsxData.filter(
+            item =>
+              !tableData.some(
+                ele =>
+                  ele.date === item.date &&
+                  ele.device === item.device &&
+                  ele.defaultType === item.defaultType
+              )
+          )
+          let addArr = []
+          for (let rec of newDataArr) {
+            let obj = {
+              report_type: '故障分布数据',
+              report_data: rec,
+              report_time: rec.date,
+            }
+            rec = obj
+            addArr.push(rec)
+          }
+          let insertParams = {
+            data: addArr,
+          }
+          let res = await this.$request('apiInsert', insertParams, 'post')
+          if (res.code == 2000) {
+            this.getData()
+            this.$message({
+              message: '新增数据成功',
+              type: 'success',
+            })
+          } else {
+            this.$message({
+              message: '无新增数据',
+              type: 'info',
+            })
+          }
+        }
+      } catch (error) {
+        console.log(error)
+      }
+    },
+    // 下载导出表格
+    async downloadExcel() {
+      let queryParams = {
+        report_type: '故障分布数据',
+      }
+      let data = await this.$request('apiQuery', queryParams, 'post')
+      let allFdData = data.data.list
+      let ExcelData = []
+      for(let rec of allFdData){
+        rec = JSON.parse(rec.report_data)
+        ExcelData.push(rec)
+      }
+      const header = ['date','defaultType','device']
+      const headerName = {date:"故障日期",defaultType:"故障类型",device:"存储"}
+      json2Excel(ExcelData,header,headerName,'故障分布数据表')
+    },
     //开启弹框
     showDialog() {
       this.resetForm()
@@ -276,5 +396,10 @@ export default {
 .body {
   flex: 1;
   padding: 10px 20px;
+}
+/deep/ .xlsx-button {
+  border: 0px solid hsl(206, 100%, 56%);
+  padding: 0;
+  border-radius: 3px;
 }
 </style>

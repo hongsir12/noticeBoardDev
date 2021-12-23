@@ -10,6 +10,11 @@
       ></vue-xlsx-table>
       <el-button-group>
         <el-button
+          icon="el-icon-download"
+          title="下载模板"
+          @click="downloadTempXlsx"
+        ></el-button>
+        <el-button
           type="success"
           icon="el-icon-check"
           title="保存配置"
@@ -45,6 +50,7 @@
   </div>
 </template>
 <script>
+// import {export_json_to_excel} from "@/vendor/Export2Excel.js"
 import ace from 'ace-builds'
 // 在webpack环境中使用必须要导入
 import 'ace-builds/webpack-resolver'
@@ -109,6 +115,30 @@ export default {
     handleSelectedFile(convertedData) {
       this.data = convertedData.body
     },
+    // 点击下载模板按钮
+    async downloadTempXlsx() {
+      // const {export_json_to_excel} = require("@/vendor/Export2Excel.js")
+      let currentRoutePath = this.$route.path.split('/')[1]
+      if (currentRoutePath == 'fd') {
+        let queryParams = {
+          report_type: '故障分布数据',
+        }
+        let {data} = await this.$request('apiQuery', queryParams, 'post')
+        data = data.list;
+        let arr = []
+        for(let rec of data) {
+          rec = JSON.parse(rec.report_data)
+          arr.push(rec)
+        }
+        const tHeader = ["故障日期","故障类型","存储"]
+        const filterVal = ["date","defaultType","device"]
+        // const xlsxData = 
+        // export_json_to_excel(tHeader, arr)
+        
+      }
+  
+      
+    },
     // 点击保存按钮保存当前配置
     saveChartOption() {
       let that = this
@@ -124,9 +154,9 @@ export default {
         .then(async ({ value }) => {
           if (!value) {
             this.$message({
-                message: '配置名不能为空',
-                type: 'error',
-              })
+              message: '配置名不能为空',
+              type: 'error',
+            })
           } else {
             //先判断配置名是否存在
             let queryParams = {
@@ -189,13 +219,15 @@ export default {
                       message: '覆盖成功!',
                     })
                   } else {
+                    console.log(res)
                     this.$message({
                       type: 'info',
                       message: '覆盖失败',
                     })
                   }
                 })
-                .catch(() => {
+                .catch(err => {
+                  // console.log(err)
                   this.$message({
                     type: 'info',
                     message: '已取消操作',
@@ -224,8 +256,27 @@ export default {
     buildChart() {
       // 先获取编辑器内容
       let newEditorContent = this.aceEditor.getValue()
-      // 获取数据源
+      // 获取excel数据源
       let data = this.data
+      let currentRoutePath = this.$route.path.split('/')[1]
+      if (data.length <= 0) {
+        this.$message({
+          message: '无新增数据',
+          type: 'warning',
+        })
+      } else {
+        if (currentRoutePath == 'fd') {
+          data.forEach((item, index) => {
+            data[index] = {
+              date: item['故障日期'],
+              defaultType: item['故障类型'],
+              device: item['存储'],
+            }
+          })
+          this.insertData(data, '故障分布数据')
+        }
+      }
+
       // 传给父组件新的编辑器内容和数据源
       this.$emit('sendEditorContent', { newEditorContent, data })
     },
@@ -250,6 +301,64 @@ export default {
             message: '已取消',
           })
         })
+    },
+    // 插入excel表格中的新增数据
+    async insertData(xlsxData, report_type) {
+      try {
+        let queryParams = {
+          report_type: report_type,
+        }
+        let data = await this.$request('apiQuery', queryParams, 'post')
+        let tableData = [] //存放查询到的全部数据
+        if (data.code == 2000) {
+          for (let rec of data.data.list) {
+            let id = rec.report_id
+            rec = JSON.parse(rec.report_data)
+            rec.id = id
+            tableData.push(rec)
+          }
+          for (let xlsxRec of xlsxData) {
+            xlsxRec.date = this.$moment(xlsxRec.date).format('YYYY-MM-DD')
+          }
+          // 存放新增的数据
+          let newDataArr = xlsxData.filter(
+            item =>
+              !tableData.some(
+                ele =>
+                  ele.date === item.date &&
+                  ele.device === item.device &&
+                  ele.defaultType === item.defaultType
+              )
+          )
+          let addArr = []
+          for (let rec of newDataArr) {
+            let obj = {
+              report_type: '故障分布数据',
+              report_data: rec,
+              report_time: rec.date,
+            }
+            rec = obj
+            addArr.push(rec)
+          }
+          let insertParams = {
+            data: addArr,
+          }
+          let res = await this.$request('apiInsert', insertParams, 'post')
+          if (res.code == 2000) {
+            this.$message({
+              message: '新增数据成功',
+              type: 'success',
+            })
+          }else{
+            this.$message({
+              message: '无新增数据',
+              type: 'info',
+            })
+          }
+        }
+      } catch (error) {
+        console.log(error)
+      }
     },
   },
 }
