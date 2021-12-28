@@ -2,6 +2,8 @@
   <div class="com-chart" ref="chartRef"></div>
 </template>
 <script>
+import { copyTransFunc } from '@/utils/formatDataKey.js'
+import { getObjectDiff } from '@/utils/getObjectDiff.js'
 import _ from 'lodash'
 export default {
   data() {
@@ -250,6 +252,37 @@ export default {
         rec.y = calcY(rec['故障日期'], rec['存储'])
       }
 
+      // 将重复的x坐标进行微调，使得相同日期的点在轴上不会重复覆盖
+      function calcNoCover(data) {
+        let flag = false
+        let oldX = data[0].x
+        for (let i = 0; i < data.length - 1; i++) {
+          if (data[i + 1].x !== oldX) {
+            oldX = data[i + 1].x
+          } else {
+            flag = true
+            data[i + 1].x = data[i + 1].x + 0.0001
+          }
+        }
+        let newData = data
+        if (flag) {
+          calcNoCover(newData)
+        } else {
+          return data
+        }
+      }
+      let deviceName = []
+      data.forEach(item => {
+        if (!deviceName.includes(item['存储'])) {
+          deviceName.push(item['存储'])
+        }
+      })
+      // console.log(deviceName)
+      deviceName.forEach(item => {
+        let deviceData = _.filter(data, ['存储', item])
+        calcNoCover(deviceData)
+      })
+
       var ds = [
         // x是按 (当前日期-最小日期) / (最大日期 - 最小日期) 的一个比例得出的位置
         // y是按 (当前日期所在星期) + (存储的序号下标 x 7) 得出哪个存储哪个星期几发生的故障
@@ -294,7 +327,7 @@ export default {
               startValue: this.currentWeekChartData[0].x - 0.0001,
               endValue:
                 this.currentWeekChartData[this.currentWeekChartData.length - 1]
-                  .x + 0.0001,
+                  .x + 0.005,
               xAxisIndex: [0, 1],
             },
           ],
