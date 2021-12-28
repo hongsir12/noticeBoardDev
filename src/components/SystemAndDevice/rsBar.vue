@@ -379,11 +379,15 @@ export default {
         starttime: this.currentWeek.startOfWeek,
         overtime: this.currentWeekendOfWeek,
       }
-      let { data: tabledata } = await this.$request('apiQuery', params, 'post')
-      tabledata = tabledata.list
-      for (let rec of tabledata) {
-        rec = JSON.parse(rec.report_data)
-        data.push(rec)
+      let res = await this.$request('apiQuery', params, 'post')
+     if (res.code == 2000) {
+        let tabledata = res.data.list
+        for (let rec of tabledata) {
+          rec = JSON.parse(rec.report_data)
+          data.push(rec)
+        }
+      } else {
+        data = []
       }
       this.cpuData = data.filter((value, index, arr) => {
         return value.type == 'CPU(核)'

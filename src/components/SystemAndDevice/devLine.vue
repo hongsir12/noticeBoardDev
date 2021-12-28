@@ -233,7 +233,7 @@ export default {
           })
           .then(async () => {
             let deleteParam = {
-              data:[deletedID]
+              data: [deletedID],
             }
             let res = await this.$request('apiDelete', deleteParam, 'post')
             if (res.code == 2000) {
@@ -242,7 +242,7 @@ export default {
                 message: '删除成功!',
               })
               this.getChartOptionName(this.ChartOptionName)
-            }else{
+            } else {
               this.$message({
                 type: 'info',
                 message: '删除失败',
@@ -371,12 +371,17 @@ export default {
         starttime: this.currentWeek.startOfWeek,
         overtime: this.currentWeek.endOfWeek,
       }
-      let { data: tabledata } = await this.$request('apiQuery', params, 'post')
-      tabledata = tabledata.list
-      for (let rec of tabledata) {
-        rec = JSON.parse(rec.report_data)
-        data.push(rec)
+      let res = await this.$request('apiQuery', params, 'post')
+      if (res.code == 2000) {
+        let tabledata = res.data.list
+        for (let rec of tabledata) {
+          rec = JSON.parse(rec.report_data)
+          data.push(rec)
+        }
+      } else {
+        data = []
       }
+
       this.allData = data
       this.pDevData = data.filter((value, index, arr) => {
         return value.type == '物理设备'
@@ -393,16 +398,35 @@ export default {
       // 前n天状态数据
       const that = this
       function currentDayDevFocusAndErr(n = 0) {
-        let arr = []
-        arr.push(
-          that.pDevData[n].focus,
-          that.pDevData[n].err,
-          that.osData[n].focus,
-          that.osData[n].err,
-          that.mvData[n].focus,
-          that.mvData[n].err
-        )
-        return arr
+        if (that.allData.length <= 0) {
+          return 0
+        } else {
+          let arr = []
+          if(typeof(that.pDevData[n])=='undefined') {
+            arr.push(0,0)
+          }else{
+            arr.push(that.pDevData[n].focus,that.pDevData[n].err)
+          }
+          if(typeof(that.osData[n])=='undefined') {
+            arr.push(0,0)
+          }else{
+            arr.push(that.osData[n].focus,that.osData[n].err)
+          }
+          if(typeof(that.mvData[n])=='undefined') {
+            arr.push(0,0)
+          }else{
+            arr.push(that.mvData[n].focus,that.osData[n].err)
+          }
+          // arr.push(
+          //   that.pDevData[n].focus,
+          //   that.pDevData[n].err,
+          //   that.osData[n].focus,
+          //   that.osData[n].err,
+          //   that.mvData[n].focus,
+          //   that.mvData[n].err
+          // )
+          return arr
+        }
       }
       const dataOption = {
         dataset: {

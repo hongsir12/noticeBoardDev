@@ -152,7 +152,6 @@ export default {
       }
       let { data } = await this.$request('apiQuery', params, 'post')
       let chartData = data.list
-      console.log(chartData);
       let optionList = []
       for (let rec of chartData) {
         let id = rec.report_id

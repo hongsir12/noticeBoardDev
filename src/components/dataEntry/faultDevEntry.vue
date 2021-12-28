@@ -83,8 +83,8 @@
 
     <!-- 新增信息弹框 -->
     <el-dialog title="设备故障信息" :visible.sync="dialogFormVisible">
-      <el-form :model="form" ref="form">
-        <el-form-item label="故障日期" :label-width="formLabelWidth">
+      <el-form :model="form" ref="form" :rules="rules">
+        <el-form-item label="故障日期" prop="date" :label-width="formLabelWidth" required>
           <el-date-picker
             v-model="form.date"
             align="center"
@@ -94,11 +94,11 @@
           >
           </el-date-picker>
         </el-form-item>
-        <el-form-item label="设备名称" :label-width="formLabelWidth">
+        <el-form-item required label="设备名称" prop="device" :label-width="formLabelWidth">
           <el-input v-model="form.device" autocomplete="off"></el-input>
         </el-form-item>
-        <el-form-item label="故障类型" :label-width="formLabelWidth">
-          <el-select v-model="form.defaultType" placeholder="请选择故障类型">
+        <el-form-item label="故障类型"  prop="defaultType" :label-width="formLabelWidth">
+          <el-select v-model="form.defaultType" placeholder="请选择故障类型" required>
             <el-option
               v-for="item in defaultType"
               :key="item.value"
@@ -116,16 +116,26 @@
   </div>
 </template>
 <script>
-import {json2Excel} from  '@/utils/json2Excel.js'
+import { json2Excel } from '@/utils/json2Excel.js'
 export default {
   data() {
     return {
-      tableData: [],
-      excelData: [],
+      tableData: [], // 表格数据
+      excelData: [], // excel数据
       form: {
+        // 表单数据
         date: '',
         device: '',
         defaultType: '',
+      },
+      rules: {
+        date: [{ required: true, message: '请选择日期', trigger: 'change' }],
+        device: [
+          { required: true, message: '设备名称不能为空', trigger: 'blur' },
+        ],
+        defaultType: [
+          { required: true, message: '故障类型不能为空', trigger: 'change' },
+        ]
       },
       defaultType: ['CPU', 'SAS盘', '主板', '软件', '电源', '控制器', '其他'],
       dialogFormVisible: false, //弹框显示状态
@@ -176,53 +186,60 @@ export default {
       }
     },
     // 提交故障数据表单
-    async onSubmit() {
-      this.form.date = this.$moment(this.form.date).format('YYYY-MM-DD')
-      // 新增
-      if (!this.isEditor) {
-        this.tableData.push(this.form)
-        let params = {
-          report_type: '故障分布数据',
-          report_data: this.form,
-          report_time: this.form.date,
-        }
-        let data = await this.$request('apiInsert', params, 'post')
-        if (data.code == 2000) {
-          this.$message({
-            message: '新增数据成功',
-            type: 'success',
-          })
-          this.getData()
-          this.dialogFormVisible = false
+    onSubmit() {
+      this.$refs.form.validate(async valid => {
+        if (valid) {
+          this.form.date = this.$moment(this.form.date).format('YYYY-MM-DD')
+          // 新增
+          if (!this.isEditor) {
+            this.tableData.push(this.form)
+            let params = {
+              report_type: '故障分布数据',
+              report_data: this.form,
+              report_time: this.form.date,
+            }
+            let data = await this.$request('apiInsert', params, 'post')
+            if (data.code == 2000) {
+              this.$message({
+                message: '新增数据成功',
+                type: 'success',
+              })
+              this.getData()
+              this.dialogFormVisible = false
+            } else {
+              console.log(data);
+              this.$message({
+                message: '新增数据失败',
+                type: 'error',
+              })
+            }
+          } else {
+            //修改
+            let updateParams = {
+              report_id: this.editID,
+              report_data: this.form,
+              report_time: this.form.date,
+            }
+            let data = await this.$request('apiUpdate', updateParams, 'post')
+            if (data.code == 2000) {
+              this.$message({
+                message: '修改数据成功',
+                type: 'success',
+              })
+              this.dialogFormVisible = false
+              this.isEditor = false
+              this.getData()
+            } else {
+              this.$message({
+                message: '修改数据失败',
+                type: 'error',
+              })
+            }
+          }
         } else {
-          this.$message({
-            message: '新增数据失败',
-            type: 'error',
-          })
+          return false
         }
-      } else {
-        //修改
-        let updateParams = {
-          report_id: this.editID,
-          report_data: this.form,
-          report_time: this.form.date,
-        }
-        let data = await this.$request('apiUpdate', updateParams, 'post')
-        if (data.code == 2000) {
-          this.$message({
-            message: '修改数据成功',
-            type: 'success',
-          })
-          this.dialogFormVisible = false
-          this.isEditor = false
-          this.getData()
-        } else {
-          this.$message({
-            message: '修改数据失败',
-            type: 'error',
-          })
-        }
-      }
+      })
     },
     // 修改故障信息数据
     async editData(id) {
@@ -270,7 +287,7 @@ export default {
       this.importExcel()
     },
     // 导入excel数据
-    async importExcel() {
+    importExcel() {
       // 获取excel数据
       let data = this.excelData
       if (data.length <= 0) {
@@ -320,7 +337,7 @@ export default {
           let addArr = []
           for (let rec of newDataArr) {
             let obj = {
-              report_type: '故障分布数据',
+              report_type: report_type,
               report_data: rec,
               report_time: rec.date,
             }
@@ -356,13 +373,17 @@ export default {
       let data = await this.$request('apiQuery', queryParams, 'post')
       let allFdData = data.data.list
       let ExcelData = []
-      for(let rec of allFdData){
+      for (let rec of allFdData) {
         rec = JSON.parse(rec.report_data)
         ExcelData.push(rec)
       }
-      const header = ['date','defaultType','device']
-      const headerName = {date:"故障日期",defaultType:"故障类型",device:"存储"}
-      json2Excel(ExcelData,header,headerName,'故障分布数据表')
+      const header = ['date', 'defaultType', 'device']
+      const headerName = {
+        date: '故障日期',
+        defaultType: '故障类型',
+        device: '存储',
+      }
+      json2Excel(ExcelData, header, headerName, '故障分布数据表')
     },
     //开启弹框
     showDialog() {
@@ -381,6 +402,9 @@ export default {
         date: '',
         device: '',
         defaultType: '',
+      }
+      if (this.$refs.form !== undefined) {
+        this.$refs.form.resetFields()
       }
     },
   },

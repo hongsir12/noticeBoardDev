@@ -8,16 +8,20 @@
       :z="999"
       :min-width="278"
       :min-height="200"
+      :draggable="draggableEnabled"
       @dragging="onDrag"
       @resizing="onResize"
       :parent="true"
+      
     >
       <ace
         :sendEditorProps="sendEditorProps"
+        :currentWeek="currentWeek"
         @dialogVisible="getDialogVisible"
         @aceClose="aceClose"
         @getChartOptionName="getChartOptionName"
         @sendEditorContent="sendEditorContent"
+        @draggableEnabled="getDraggableEnabled"
         ref="aceRef"
       ></ace>
     </vue-draggable-resizable>
@@ -74,6 +78,8 @@ export default {
     return {
       // 可拖动缩放容器的配置
       draggableResizable: { width: 0, height: 0, x: 0, y: 0 },
+      // 是否允许拖动
+      draggableEnabled:true,
       ChartOptionName:'磁盘IO分布图表配置',
       // 编辑器显示状态
       editorShow: false,
@@ -164,6 +170,9 @@ export default {
     // 编辑器组件点击历史配置按钮后将弹框显示状态传给当前父组件
     getDialogVisible(res) {
       this.dialogVisible = res
+    },
+    getDraggableEnabled(res){
+      this.draggableEnabled = res
     },
     // 切换历史配置
     radioChange(res) {

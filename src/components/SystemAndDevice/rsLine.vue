@@ -57,7 +57,7 @@
         <el-button type="primary" @click="chooseOption">确 定</el-button>
       </span>
     </el-dialog>
-    
+
     <div class="com-chart" ref="chartRef"></div>
   </div>
 </template>
@@ -66,7 +66,7 @@ export default {
   data() {
     return {
       // 可拖动缩放容器的配置
-      draggableResizable: { width: 0, height: 0, x: 0, y: 0 },  
+      draggableResizable: { width: 0, height: 0, x: 0, y: 0 },
       chartInstance: null,
       allData: null, //获取的所有数据
       cpuData: null, //cpu数据
@@ -233,7 +233,7 @@ export default {
           })
           .then(async () => {
             let deleteParam = {
-              data:[deletedID]
+              data: [deletedID],
             }
             let res = await this.$request('apiDelete', deleteParam, 'post')
             if (res.code == 2000) {
@@ -242,7 +242,7 @@ export default {
                 message: '删除成功!',
               })
               this.getChartOptionName(this.ChartOptionName)
-            }else{
+            } else {
               this.$message({
                 type: 'info',
                 message: '删除失败',
@@ -275,7 +275,7 @@ export default {
     sendEditorContent(res) {
       this.newDataAndScript = res
     },
-      // 初始化echartInstance对象
+    // 初始化echartInstance对象
     initChart() {
       this.chartInstance = this.$echarts.init(this.$refs.chartRef)
       const initOption = {
@@ -347,18 +347,20 @@ export default {
     async getData() {
       let data = []
       let params = {
-        
-            report_type: '资源使用情况周报数据',
-            // 根据当周头末时间查询该周数据
-            starttime: this.currentWeek.startOfWeek,
-            overtime: this.currentWeek.endOfWeek,
-       
+        report_type: '资源使用情况周报数据',
+        // 根据当周头末时间查询该周数据
+        starttime: this.currentWeek.startOfWeek,
+        overtime: this.currentWeek.endOfWeek,
       }
-      let { data: tabledata } = await this.$request('apiQuery', params, 'post')
-      tabledata = tabledata.list
-      for (let rec of tabledata) {
-        rec = JSON.parse(rec.report_data)
-        data.push(rec)
+      let res = await this.$request('apiQuery', params, 'post')
+      if (res.code == 2000) {
+        let tabledata = res.data.list
+        for (let rec of tabledata) {
+          rec = JSON.parse(rec.report_data)
+          data.push(rec)
+        }
+      } else {
+        data = []
       }
       this.allData = data
       this.cpuData = data.filter((value, index, arr) => {
@@ -375,15 +377,39 @@ export default {
     updateChart() {
       // 计算当天资源使用量
       const that = this
-      function currentDayResourceUsed(n = 0) {
-        let arr = []
-        arr.push(
-          that.cpuData[n].used,
-          that.ramData[n].used,
-          that.storageData[n].used
-        )
-        // console.log(arr)
-        return arr
+      function currentDayResourceUsed(n) {
+        try {
+          if (that.allData.length <= 0) {
+          return 0
+        } else {
+          let arr = []
+          if(typeof(that.cpuData[n])=='undefined') {
+            arr.push(0)
+          }else{
+            arr.push(that.cpuData[n].used)
+          }
+          if(typeof(that.ramData[n])=='undefined') {
+            arr.push(0)
+          }else{
+            arr.push(that.ramData[n].used)
+          }
+          if(typeof(that.storageData[n])=='undefined') {
+            arr.push(0)
+          }else{
+            arr.push(that.storageData[n].used)
+          }
+          // arr.push(
+          //   that.cpuData[n].used,
+          //   that.ramData[n].used,
+          //   that.storageData[n].used
+          // )
+          // console.log(arr)
+          return arr
+        }
+        } catch (error) {
+          console.log(error);
+        }
+        
       }
       // 处理数据相关配置项
       const dataOption = {
@@ -391,22 +417,37 @@ export default {
           // 提供一份数据。
           source: [
             ['product', 'CPU(核)', '内存(GB)', '存储(TB)'],
-            [this.currentWeek.startOfWeek, ...currentDayResourceUsed()],
-            [this.$moment(this.currentWeek.startOfWeek)
+            [this.currentWeek.startOfWeek, ...currentDayResourceUsed(0)],
+            [
+              this.$moment(this.currentWeek.startOfWeek)
                 .add(1, 'd')
-                .format('YYYY-MM-DD'), ...currentDayResourceUsed(1)],
-            [this.$moment(this.currentWeek.startOfWeek)
+                .format('YYYY-MM-DD'),
+              ...currentDayResourceUsed(1),
+            ],
+            [
+              this.$moment(this.currentWeek.startOfWeek)
                 .add(2, 'd')
-                .format('YYYY-MM-DD'), ...currentDayResourceUsed(2)],
-            [this.$moment(this.currentWeek.startOfWeek)
+                .format('YYYY-MM-DD'),
+              ...currentDayResourceUsed(2),
+            ],
+            [
+              this.$moment(this.currentWeek.startOfWeek)
                 .add(3, 'd')
-                .format('YYYY-MM-DD'), ...currentDayResourceUsed(3)],
-            [this.$moment(this.currentWeek.startOfWeek)
+                .format('YYYY-MM-DD'),
+              ...currentDayResourceUsed(3),
+            ],
+            [
+              this.$moment(this.currentWeek.startOfWeek)
                 .add(4, 'd')
-                .format('YYYY-MM-DD'), ...currentDayResourceUsed(4)],
-            [this.$moment(this.currentWeek.startOfWeek)
+                .format('YYYY-MM-DD'),
+              ...currentDayResourceUsed(4),
+            ],
+            [
+              this.$moment(this.currentWeek.startOfWeek)
                 .add(5, 'd')
-                .format('YYYY-MM-DD'), ...currentDayResourceUsed(5)],
+                .format('YYYY-MM-DD'),
+              ...currentDayResourceUsed(5),
+            ],
             [this.currentWeek.endOfWeek, ...currentDayResourceUsed(6)],
           ],
         },
@@ -414,7 +455,7 @@ export default {
       this.chartInstance.setOption(dataOption)
     },
     // 更改图表
-    changeChart(script,data) {
+    changeChart(script, data) {
       // 用echarts时，如果不存在DOM，就会报错，处理方法先检查是否DOM存在：
       if (this.$refs.chartRef == null) {
         return
@@ -431,7 +472,7 @@ export default {
         ).bind(this)
         func(this.$echarts)
       } catch (error) {
-        console.log(error);
+        console.log(error)
         this.$message({
           message: '数据或代码出错',
           type: 'error',
@@ -471,7 +512,7 @@ export default {
 <style lang="less" scoped>
 .switch {
   position: absolute;
-  top:10px;
+  top: 10px;
   right: 10px;
   z-index: 10;
 }

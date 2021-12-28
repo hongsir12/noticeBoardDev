@@ -2,6 +2,10 @@
   <div class="com-chart" ref="chartRef"></div>
 </template>
 <script>
+import { copyTransFunc } from '@/utils/formatDataKey.js'
+import { getObjectDiff } from '@/utils/getObjectDiff.js'
+import _ from 'lodash'
+
 export default {
   data() {
     return {
@@ -26,16 +30,18 @@ export default {
     newDataAndScript: {
       deep: true,
       handler: function(val) {
-        // if (val.data.length === 0) {
-        //   this.changeChart(val.newEditorContent, this.chartData)
-        // } else {
-        //   this.changeChart(val.newEditorContent, val.data)
-        // }
-        this.changeChart(val.newEditorContent, val.data)
+        if (val.data.length === 0) {
+          this.getData()
+          this.changeChart(val.newEditorContent, this.chartData)
+        } else {
+          this.changeChart(val.newEditorContent, val.data)
+        }
+        // this.changeChart(val.newEditorContent, val.data)
       },
     },
   },
   mounted() {
+    this.getData()
     this.initChart()
     //向父组件发送图表配置名称
     this.$emit('sendChartOptionName', this.ChartOptionName)
@@ -45,19 +51,52 @@ export default {
   },
 
   methods: {
+    async getData() {
+      try {
+        let queryParams = {
+          report_type: '交换机接口使用率数据',
+        }
+        let data = await this.$request('apiQuery', queryParams, 'post')
+        if (data.code == 2000) {
+          let chartData = data.data.list
+          let lastReportTime = chartData[chartData.length-1].report_time
+          // 获取最近上传日期的数据
+          chartData = _.filter(chartData,['report_time',lastReportTime])
+          // console.log(chartData);
+          this.chartData = chartData
+        }else {
+          this.chartData = []
+          this.$message({
+            message: '尚无数据',
+            type: 'info',
+          })
+        }
+        this.initChart()
+      } catch (error) {
+        console.log(error);
+      }
+    },
     //   初始化图表
     initChart() {
       // 初始化echart实例
       let myChart = this.$echarts.init(this.$refs.chartRef)
       let option
       let data = []
-
-      for (let rec of data) {
-        rec['低于50%使用率'] = Math.random() * 0.2 + 0.6
-        rec['使用率50%~80%'] =
-          Math.random() * (0.8 - rec['低于50%使用率']) + 0.2
-        rec['使用率80%以上'] = 1 - rec['低于50%使用率'] - rec['使用率50%~80%']
+      if (this.chartData) {
+        for (let rec of this.chartData) {
+          rec = JSON.parse(rec.report_data)
+          data.push(rec)
+        }
       }
+      let keyMapping = [
+        {key:'interface',value:'名称'},
+        {key:'lessThan50p', value:'低于50%使用率'},
+        {key:'moreThan80p', value:'使用率80%以上'},
+        {key:'bet50pAnd80p',value:'使用率50%~80%'},
+      ]
+      data = copyTransFunc(data, keyMapping)
+      // console.log(data);
+      
 
       option = {
         title: {
@@ -149,7 +188,7 @@ export default {
             // },
           },
         ],
-      }
+      },
 
       myChart.setOption(option)
       this.chartInstance = myChart

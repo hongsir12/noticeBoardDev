@@ -177,7 +177,7 @@ export default {
       for (let rec of chartData) {
         let id = rec.report_id
         rec = JSON.parse(rec.report_data)
-        let obj = { optionName: rec.optionName, content: rec.content,id: id }
+        let obj = { optionName: rec.optionName, content: rec.content, id: id }
         optionList.push(obj)
       }
       this.sendEditorProps.optionList = optionList
@@ -233,7 +233,7 @@ export default {
           })
           .then(async () => {
             let deleteParam = {
-              data:[deletedID]
+              data: [deletedID],
             }
             let res = await this.$request('apiDelete', deleteParam, 'post')
             if (res.code == 2000) {
@@ -242,7 +242,7 @@ export default {
                 message: '删除成功!',
               })
               this.getChartOptionName(this.ChartOptionName)
-            }else{
+            } else {
               this.$message({
                 type: 'info',
                 message: '删除失败',
@@ -397,12 +397,17 @@ export default {
         starttime: this.currentWeek.startOfWeek,
         overtime: this.currentWeek.endOfWeek,
       }
-      let { data: tabledata } = await this.$request('apiQuery', params, 'post')
-      tabledata = tabledata.list
-      for (let rec of tabledata) {
-        rec = JSON.parse(rec.report_data)
-        data.push(rec)
+      let res = await this.$request('apiQuery', params, 'post')
+      if (res.code == 2000) {
+        let tabledata = res.data.list
+        for (let rec of tabledata) {
+          rec = JSON.parse(rec.report_data)
+          data.push(rec)
+        }
+      } else {
+        data = []
       }
+
       this.allData = data
       this.pDevData = data.filter((value, index, arr) => {
         return value.type == '物理设备'
@@ -464,7 +469,7 @@ export default {
       this.chartInstance.setOption(dataOption)
     },
     // 更改图表
-    changeChart(script,data) {
+    changeChart(script, data) {
       // 用echarts时，如果不存在DOM，就会报错，处理方法先检查是否DOM存在：
       if (this.$refs.chartRef == null) {
         return
@@ -481,7 +486,7 @@ export default {
         ).bind(this)
         func(this.$echarts)
       } catch (error) {
-        console.log(error);
+        console.log(error)
         this.$message({
           message: '数据或代码出错',
           type: 'error',
@@ -552,7 +557,7 @@ export default {
 <style lang="less" scoped>
 .switch {
   position: absolute;
-  top:10px;
+  top: 10px;
   right: 10px;
   z-index: 10;
 }

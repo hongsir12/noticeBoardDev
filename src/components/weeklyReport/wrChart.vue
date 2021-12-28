@@ -28,7 +28,7 @@ export default {
       handler: function(val) {
         if (val.data.length === 0) {
           this.changeChart(val.newEditorContent, this.chartData)
-        }else{
+        } else {
           this.changeChart(val.newEditorContent, val.data)
         }
       },
@@ -52,9 +52,19 @@ export default {
         starttime: this.currentWeek.startOfWeek,
         overtime: this.currentWeek.endOfWeek,
       }
-      let { data: chartData } = await this.$request('apiQuery', params, 'post')
-      chartData = chartData.list
-      this.chartData = chartData
+      let data = await this.$request('apiQuery', params, 'post')
+      if (data.code == 2000) {
+        let chartData = data.data.list
+        this.chartData = chartData
+      }else{
+        this.chartData = []
+        this.$message({
+              message: '该周尚无数据',
+              type: 'info',
+            })
+      }
+
+      // console.log(this.chartData)
       this.initChart()
     },
     // 初始化图表样式
@@ -72,8 +82,8 @@ export default {
         let obj = {
           姓名: `${rec.station}-${rec.name}`,
           工单号: rec.workOrder,
-          开始时间: rec.time[0],
-          结束时间: rec.time[1],
+          开始时间: rec.startWorkTime,
+          结束时间: rec.endWorkTime,
           日期: date,
           工作内容: rec.tasks,
         }

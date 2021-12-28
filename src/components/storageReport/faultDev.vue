@@ -2,6 +2,7 @@
   <div class="com-chart" ref="chartRef"></div>
 </template>
 <script>
+import _ from 'lodash'
 export default {
   data() {
     return {
@@ -27,12 +28,12 @@ export default {
     newDataAndScript: {
       deep: true,
       handler: function(val) {
-        // if (val.data.length === 0) {
-        //   this.changeChart(val.newEditorContent, this.chartData)
-        // } else {
-        //   this.changeChart(val.newEditorContent, val.data)
-        // }
-        this.changeChart(val.newEditorContent, val.data)
+        if (val.data.length === 0) {
+          this.changeChart(val.newEditorContent, this.chartData)
+        } else {
+          this.changeChart(val.newEditorContent, val.data)
+        }
+        // this.changeChart(val.newEditorContent, val.data)
       },
     },
   },
@@ -110,9 +111,9 @@ export default {
             rec.x = calcX(rec.date, rec)
           }
         } else {
-          const startValue = {x:0.0001}
-          const endValue = this.chartData[this.chartData.length-1]
-          tableData.push(startValue,endValue)
+          const startValue = { x: 0.0001 }
+          const endValue = this.chartData[this.chartData.length - 1]
+          tableData.push(startValue, endValue)
           this.$message({
             message: '该周尚无数据',
             type: 'info',
@@ -395,18 +396,22 @@ export default {
     },
     // 当浏览器大小发生变化时候，调用方法完成屏幕适配
     screenAdapter() {
-      const titleFontSize = (this.$refs.chartRef.offsetWidth / 100) * 1.5
-      // 和分辨率大小相关的配置项
-      const adapterOption = {
-        title: {
-          textStyle: {
-            fontSize: titleFontSize,
+      try {
+        const titleFontSize = (this.$refs.chartRef.offsetWidth / 100) * 1.5
+        // 和分辨率大小相关的配置项
+        const adapterOption = {
+          title: {
+            textStyle: {
+              fontSize: titleFontSize,
+            },
           },
-        },
+        }
+        this.chartInstance.setOption(adapterOption)
+        // 手动调用图表对象的resize才能产生效果
+        this.chartInstance.resize()
+      } catch (error) {
+        console.log(error)
       }
-      this.chartInstance.setOption(adapterOption)
-      // 手动调用图表对象的resize才能产生效果
-      this.chartInstance.resize()
     },
   },
 }

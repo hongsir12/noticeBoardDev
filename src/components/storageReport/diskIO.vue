@@ -2,6 +2,8 @@
   <div class="com-chart" ref="chartRef"></div>
 </template>
 <script>
+import { copyTransFunc } from '@/utils/formatDataKey.js'
+import { getObjectDiff } from '@/utils/getObjectDiff.js'
 export default {
   data() {
     return {
@@ -17,7 +19,7 @@ export default {
     // 监听父组件传来的新周数
     currentWeek: {
       handler: function(newVal, oldVal) {
-        // this.getData()
+        this.getData()
         // this.initChart()
         // this.sendOption()
       },
@@ -26,16 +28,18 @@ export default {
     newDataAndScript: {
       deep: true,
       handler: function(val) {
-        // if (val.data.length === 0) {
-        //   this.changeChart(val.newEditorContent, this.chartData)
-        // } else {
-        //   this.changeChart(val.newEditorContent, val.data)
-        // }
-        this.changeChart(val.newEditorContent, val.data)
+        if (val.data.length === 0) {
+          this.getData()
+          this.changeChart(val.newEditorContent, this.chartData)
+        } else {
+          this.changeChart(val.newEditorContent, val.data)
+        }
+        // this.changeChart(val.newEditorContent, val.data)
       },
     },
   },
   mounted() {
+    this.getData()
     this.initChart()
     //向父组件发送图表配置名称
     this.$emit('sendChartOptionName', this.ChartOptionName)
@@ -45,94 +49,81 @@ export default {
   },
 
   methods: {
+    async getData() {
+      try {
+        let params = {
+          report_type: '磁盘IO分布数据',
+          // 根据当周头末时间查询该周数据
+          starttime: this.currentWeek.startOfWeek,
+          overtime: this.currentWeek.endOfWeek,
+        }
+        let data = await this.$request('apiQuery', params, 'post')
+        if (data.code == 2000) {
+          let chartData = data.data.list
+          this.chartData = chartData
+        } else {
+          this.chartData = []
+          this.$message({
+            message: '该周尚无数据',
+            type: 'info',
+          })
+        }
+        this.initChart()
+      } catch (error) {
+        console.log(error)
+      }
+    },
     //   初始化图表
     initChart() {
       // 初始化echart实例
       let myChart = this.$echarts.init(this.$refs.chartRef)
+      let data = []
+      if (this.chartData) {
+        for (let rec of this.chartData) {
+          rec = JSON.parse(rec.report_data)
+          data.push(rec)
+        }
+      }
+      let keyMapping = [
+        { key: 'date', value: '日期' },
+        { key: 'device', value: '存储' },
+        { key: 'diskType', value: '磁盘类型' },
+        { key: 'readSpeed', value: '读取速度' },
+        { key: 'writeSpeed', value: '写入速度' },
+      ]
+      data = copyTransFunc(data, keyMapping)
       let option
       var sasData = [] // 200 ~ 350    288
       var sataData = [] // 100 ~ 200   48
       var ssdData = [] // 2000 ~      96
+      for (let rec of data) {
+        rec['日期'] = this.$moment(rec['日期'])
+          .toDate()
+          .format('yyyy-MM-dd')
+        if (rec['磁盘类型'] === 'sas') {
+          sasData.push(rec)
+        }
+        if (rec['磁盘类型'] === 'sata') {
+          sataData.push(rec)
+        }
+        if (rec['磁盘类型'] === 'ssd') {
+          ssdData.push(rec)
+        }
+      }
 
-      // for (let i = 0; i < 288; i++) {
-      //   let factor = Math.random()
-      //   if (factor < 0.1) {
-      //     sasData.push([
-      //       Math.floor(170 * Math.random()) + 180,
-      //       Math.floor(100 * Math.random()),
-      //     ])
-      //   } else if (factor < 0.2) {
-      //     sasData.push([
-      //       Math.floor(150 * Math.random()),
-      //       Math.floor(150 * Math.random()),
-      //     ])
-      //   } else if (factor < 0.9) {
-      //     sasData.push([
-      //       Math.floor(170 * Math.random()) + 180,
-      //       Math.floor(170 * Math.random()) + 180,
-      //     ])
-      //   } else {
-      //     sasData.push([
-      //       Math.floor(100 * Math.random()),
-      //       Math.floor(170 * Math.random()) + 180,
-      //     ])
-      //   }
-      // }
+      sasData = sasData.map(item => {
+        item = [item['读取速度'], item['写入速度'], item['存储'], item['日期']]
+        return item
+      })
+      sataData = sataData.map(item => {
+        item = [item['读取速度'], item['写入速度'], item['存储'], item['日期']]
+        return item
+      })
+      ssdData = ssdData.map(item => {
+        item = [item['读取速度'], item['写入速度'], item['存储'], item['日期']]
+        return item
+      })
 
-      // for (let i = 0; i < 48; i++) {
-      //   let factor = Math.random()
-      //   if (factor < 0.1) {
-      //     sataData.push([
-      //       Math.floor(70 * Math.random()) + 130,
-      //       Math.floor(50 * Math.random()),
-      //     ])
-      //   } else if (factor < 0.2) {
-      //     sataData.push([
-      //       Math.floor(100 * Math.random()),
-      //       Math.floor(100 * Math.random()),
-      //     ])
-      //   } else if (factor < 0.9) {
-      //     sataData.push([
-      //       Math.floor(80 * Math.random()) + 120,
-      //       Math.floor(80 * Math.random()) + 120,
-      //     ])
-      //   } else {
-      //     sataData.push([
-      //       Math.floor(50 * Math.random()),
-      //       Math.floor(70 * Math.random()) + 130,
-      //     ])
-      //   }
-      // }
-
-      // for (let i = 0; i < 96; i++) {
-      //   let factor = Math.random()
-      //   if (factor < 0.1) {
-      //     ssdData.push([
-      //       Math.floor(1000 * Math.random()) + 1000,
-      //       Math.floor(1000 * Math.random()),
-      //     ])
-      //   } else if (factor < 0.2) {
-      //     ssdData.push([
-      //       Math.floor(500 * Math.random()),
-      //       Math.floor(500 * Math.random()),
-      //     ])
-      //   } else if (factor < 0.8) {
-      //     ssdData.push([
-      //       Math.floor(500 * Math.random()) + 1000,
-      //       Math.floor(500 * Math.random()) + 1000,
-      //     ])
-      //   } else if (factor < 0.9) {
-      //     ssdData.push([
-      //       Math.floor(1000 * Math.random()) + 1000,
-      //       Math.floor(1000 * Math.random()) + 1000,
-      //     ])
-      //   } else {
-      //     ssdData.push([
-      //       Math.floor(1000 * Math.random()),
-      //       Math.floor(1000 * Math.random()) + 1000,
-      //     ])
-      //   }
-      // }
       option = {
         title: {
           text: '3Par存储-磁盘IO分布图',
@@ -157,7 +148,7 @@ export default {
         },
         tooltip: {
           formatter: param => {
-            return `读IOPS: ${param.value[1]} <br/>写IOPS: ${param.value[0]}`
+            return `日期:${param.value[3]}<br/>存储:${param.value[2]}<br/>读IOPS: ${param.value[0]} <br/>写IOPS: ${param.value[1]}`
           },
         },
         // 数据格式为: 每个存储一共有多少个盘, 每个盘的型号是什么, 每月平均读写是多少
@@ -188,7 +179,7 @@ export default {
       this.chartOption = option
     },
     // 更改图表
-    changeChart(script,data) {
+    changeChart(script, data) {
       // 用echarts时，如果不存在DOM，就会报错，处理方法先检查是否DOM存在：
       if (this.$refs.chartRef == null) {
         return
@@ -205,7 +196,7 @@ export default {
         ).bind(this)
         func(this.$echarts)
       } catch (error) {
-        console.log(error);
+        console.log(error)
         this.$message({
           message: '数据或代码出错',
           type: 'error',
