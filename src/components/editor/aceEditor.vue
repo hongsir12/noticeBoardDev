@@ -378,7 +378,6 @@ export default {
               { key: 'bet50pAnd80p', value: '使用率50%~80%' },
             ]
             data = copyTransFunc(data, keyMapping)
-            console.log(data);
           }
         }
       }
